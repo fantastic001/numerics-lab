@@ -40,6 +40,19 @@ def K1(n, a11):
 
 SI = scipy.sparse.eye(n)
 Lp = scipy.sparse.kron(SI, K1(n, 1)) + scipy.sparse.kron(K1(n, 1), SI)
+Lp[0,0] = 1.5 * Lp[0,0]
+
+
+viscosity = 1e-06
+dt = 0.1
+SI_ = scipy.sparse.eye(n*(n-1))
+SI__= scipy.sparse.eye(n-1)
+
+Lyy = -scipy.sparse.kron(SI,K1(n-1,2)) + scipy.sparse.kron(K1(n,3),SI__)
+Ly = SI_ - (viscosity*dt)*Lyy
+
+Lxx = -scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
+Lx = SI_ - (viscosity*dt)*Lxx
 
 for i in range(n):
     for j in range(n):
