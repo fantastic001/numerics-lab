@@ -1,12 +1,36 @@
 
 import scipy 
 import scipy.sparse
+import scipy.sparse.linalg
 import numpy as np 
 
 n = 100
 
 A = scipy.sparse.lil_matrix((n**2, n**2))
 
+def attach_boundaries(u,v):
+    """
+    Adds boundary nodes to x-component and y-component 
+    """
+    p = np.zeros([n,n+1])
+    q = np.zeros([n+1, n])
+    p[:,1:-1] = u
+    q[1:-1, :] = v
+    return (p,q)
+
+def compute_divergence(u,v):
+    """
+    Computes divergence 
+
+    Fields must have boundaries attached by attach_boundaries(u,v)
+    """
+    return np.diff(u) + np.diff(v.T).T
+
+def apply_pressure(u,v,p):
+    """
+    WARNING: Pressure must be negative such that it is computed from p = psolver.solve(rhs) not p = -psolver.solve(rhs)
+    """
+    return (u + np.diff(p), v + np.diff(p.T).T)
 
 def boundary_count(i,j):
     s = 4
@@ -45,6 +69,8 @@ def K1(n, a11):
 SI = scipy.sparse.eye(n)
 Lp = scipy.sparse.kron(SI, K1(n, 1)) + scipy.sparse.kron(K1(n, 1), SI)
 Lp[0,0] = 1.5 * Lp[0,0]
+psolver = scipy.sparse.linalg.splu(Lp)
+
 
 viscosity = 1e-06
 dt = 0.1
