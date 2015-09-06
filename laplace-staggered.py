@@ -39,7 +39,7 @@ def K1(n, a11):
     return s
 
 SI = scipy.sparse.eye(n)
-Lp = scipy.sparse.kron(SI, K1(n, 1)) + scipy.sparse.kron(K1(n, 1), SI)
+Lp = -scipy.sparse.kron(SI, K1(n, 1)) + scipy.sparse.kron(K1(n, 1), SI)
 Lp[0,0] = 1.5 * Lp[0,0]
 
 
