@@ -8,43 +8,6 @@ n = 100
 
 A = scipy.sparse.lil_matrix((n**2, n**2))
 
-def attach_boundaries(u,v):
-    """
-    Adds boundary nodes to x-component and y-component 
-    """
-    p = np.zeros([n,n+1])
-    q = np.zeros([n+1, n])
-    p[:,1:-1] = u
-    q[1:-1, :] = v
-    return (p,q)
-
-def compute_divergence(u,v):
-    """
-    Computes divergence 
-
-    Fields must have boundaries attached by attach_boundaries(u,v)
-    """
-    return np.diff(u) + np.diff(v.T).T
-
-def apply_pressure(u,v,p):
-    """
-    WARNING: Pressure must be negative such that it is computed from p = psolver.solve(rhs) not p = -psolver.solve(rhs)
-    """
-    return (u + np.diff(p), v + np.diff(p.T).T)
-
-def boundary_count(i,j):
-    s = 4
-    if i == 0:
-        s-=1
-    if i == n-1:
-        s-=1
-    if j == 0:
-        s-=1
-    if j==n-1:
-        s-=1
-    return s
-        
-
 def K1(n, a11):
     """
     If a11 is 1 then matrix is suited for Neumann boundary conditions (pressure)
@@ -77,11 +40,62 @@ dt = 0.1
 SI_ = scipy.sparse.eye(n*(n-1))
 SI__= scipy.sparse.eye(n-1)
 
-Lyy = scipy.sparse.kron(SI,K1(n-1,2)) + scipy.sparse.kron(K1(n,3),SI__)
+Lxx = scipy.sparse.kron(SI,K1(n-1,2)) + scipy.sparse.kron(K1(n,3),SI__)
+Lx = SI_ + (viscosity*dt)*Lxx
+
+Lyy = scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
 Ly = SI_ + (viscosity*dt)*Lyy
 
-Lxx = scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
-Lx = SI_ + (viscosity*dt)*Lxx
+# ------ Following functions are suited for transposed grid (i.e. first index is x direction, second index is y direction) ------
+
+def attach_boundaries(u,v):
+    """
+    Adds boundary nodes to x-component and y-component 
+
+    u,v are transposed fields 
+    """
+    p = np.zeros([n+1,n])
+    q = np.zeros([n, n+1])
+    p[1:-1,:] = u
+    q[:, 1:-1] = v
+    return (p,q)
+
+def compute_divergence(u,v):
+    """
+    Computes divergence 
+
+    Fields must have boundaries attached by attach_boundaries(u,v)
+    """
+    return np.diff(u.T).T + np.diff(v)
+
+def apply_pressure(u,v,p):
+    """
+    WARNING: Pressure must be negative such that it is computed from p = psolver.solve(rhs) not p = -psolver.solve(rhs)
+    """
+    return (u + np.diff(p.T).T, v + np.diff(p))
+
+def projection(u,v):
+    ubc, vbc = attach_boundaries(u,v)
+    rhs = compute_divergence(ubc, vbc).reshape(n**2)
+    p = psolver.solve(rhs).reshape([n,n])
+    u,v = apply_pressure(u,v,p)
+    return (u,v)
+
+x,y = np.mgrid[0:n, 0:n] # suited for transposed grid 
+
+
+def boundary_count(i,j):
+    s = 4
+    if i == 0:
+        s-=1
+    if i == n-1:
+        s-=1
+    if j == 0:
+        s-=1
+    if j==n-1:
+        s-=1
+    return s
+        
 
 for i in range(n):
     for j in range(n):
