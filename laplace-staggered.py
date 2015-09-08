@@ -48,6 +48,31 @@ Lyy = scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
 Ly = SI_ + (viscosity*dt)*Lyy
 ysolver = scipy.sparse.linalg.splu(Ly)
 
+# ------ Grid manipulation functions ------
+
+def to_centered(u,v):
+    """
+    u,v have to be transposed and with boundaries attached
+
+    Use attach_boundaries(...) for attaching boundaries 
+    """
+    return ((u[:-1, :] + u[1:, :])/2, (v[:,:-1] + v[:,1:])/2)
+
+def to_staggered(u,v):
+    """
+    Converts centered field to staggered field
+
+    Returns staggered field WITHOUT boundaries
+    """
+    uc, vc = ((u[:-1, :] + u[1:, :])/2, (v[:,:-1] + v[:,1:])/2)
+    uc[[0, -1],:] = 2*u[[0, -1], :]
+    vc[:,[0, -1]] = 2*v[:, [0, -1]]
+    return (uc, vc)
+
+def field_transpose(u,v):
+    return (u.T, v.T)
+
+
 # ------ Following functions are suited for transposed grid (i.e. first index is x direction, second index is y direction) ------
 
 def attach_boundaries(u,v):
