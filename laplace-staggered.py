@@ -42,9 +42,11 @@ SI__= scipy.sparse.eye(n-1)
 
 Lxx = scipy.sparse.kron(SI,K1(n-1,2)) + scipy.sparse.kron(K1(n,3),SI__)
 Lx = SI_ + (viscosity*dt)*Lxx
+xsolver = scipy.sparse.linalg.splu(Lx)
 
 Lyy = scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
 Ly = SI_ + (viscosity*dt)*Lyy
+ysolver = scipy.sparse.linalg.splu(Ly)
 
 # ------ Following functions are suited for transposed grid (i.e. first index is x direction, second index is y direction) ------
 
