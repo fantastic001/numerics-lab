@@ -7,10 +7,12 @@ import matplotlib.pyplot as plt
 m=n
 scale = 100
 
+l = 100
+
 def center_stream_velocity(x,y):
-    r2 = (x + 1)**2 + (y-0.495)**2
-    v = np.array([x+1,y-0.495]) / np.sqrt(r2)
-    F = 20/np.sqrt(r2)
+    r2 = (x + 1)**2 + (y-0.495*l)**2
+    v = np.array([x+1,y-0.495*l]) / np.sqrt(r2)
+    F = 20000000/np.sqrt(r2)
     return F*v
 
 # generate field 
@@ -27,7 +29,7 @@ plt.quiver(u[::11,::11], v[::11,::11], scale=scale)
 plt.show()
 
 print()
-print(np.sqrt(u**2 + v**2).max())
+print(np.sqrt(u**2 + v**2).mean())
 
 print("On the beggining")
 print(np.abs(u).max())
@@ -36,6 +38,11 @@ print(np.abs(u).max())
 # Converting to staggered 
 u,v = field_transpose(u,v) 
 u,v = to_staggered(u,v)
+
+print("Divergence error")
+ubc, vbc = attach_boundaries(u,v)
+div = compute_divergence(ubc, vbc)
+print(np.abs(div).max())
 
 print("Before diffusion")
 print(np.abs(u).max())
@@ -59,12 +66,17 @@ print(np.abs(u).max())
 print(np.abs(v).max())
 
 
+print("Divergence error")
+ubc, vbc = attach_boundaries(u,v)
+div = compute_divergence(ubc, vbc)
+print(np.abs(div).max())
+
 # Projection 
 u,v = projection(u,v)
 
 print("After projection")
-print(np.abs(u).max())
-print(np.abs(v).max())
+print(np.abs(u).mean())
+print(np.abs(v).mean())
 
 print("Divergence error")
 ubc, vbc = attach_boundaries(u,v)
@@ -77,11 +89,11 @@ u, v = to_centered(ubc, vbc)
 u,v = field_transpose(u,v)
 
 print("On the end")
-print(np.abs(u).max())
-print(np.abs(v).max())
+print(np.abs(u).mean())
+print(np.abs(v).mean())
 
 print()
-print(np.sqrt(u**2 + v**2).max())
+print(np.sqrt(u**2 + v**2).mean())
 
 plt.quiver(u[::11,::11], v[::11,::11], scale=scale)
 plt.show()
