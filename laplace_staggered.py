@@ -5,8 +5,10 @@ import scipy.sparse.linalg
 import numpy as np 
 
 n = 100
-
+r = c = 0
 A = scipy.sparse.lil_matrix((n**2, n**2))
+
+solids = np.zeros([n,n])
 
 def K1(n, a11):
     """
@@ -29,8 +31,37 @@ def K1(n, a11):
 # for pressure solution, then, it should be used like this: P = scipy.sparse.linalg.spsolve(-Lp, rhs)
 # for diffusion, use u = scipy.sparse.linalg.spsolve(Lx, rhs)
 
+
+def boundary_left(i,j):
+    return j == 0 or solids[i,j-1] 
+def boundary_right(i,j):
+    return j == c-1 or solids[i,j+1] 
+def boundary_up(i,j):
+    return i == 0 or solids[i-1,j] 
+def boundary_down(i,j):
+    return i == r-1 or solids[i+1,j] 
+
 SI = scipy.sparse.eye(n)
 Lp = scipy.sparse.kron(SI, K1(n, 1)) + scipy.sparse.kron(K1(n, 1), SI)
+c = r = n
+for i in range(r):
+    for j in range(c):
+        c = n
+        s = i*c + j
+        Lp[s,s] = 0
+        if not boundary_up(i,j):
+            Lp[s,s] += 1
+            Lp[s,s-c] = -1
+        if not boundary_down(i,j):
+            Lp[s,s] += 1
+            Lp[s,s+c] = -1
+        if not boundary_right(i,j):
+            Lp[s,s] += 1
+            Lp[s,s+1] = -1
+        if not boundary_left(i,j):
+            Lp[s,s] += 1
+            Lp[s,s-1] = -1
+
 Lp[0,0] = 1.5 * Lp[0,0]
 psolver = scipy.sparse.linalg.splu(Lp)
 
@@ -42,13 +73,54 @@ SI__= scipy.sparse.eye(n-1)
 
 Lxx = scipy.sparse.kron(SI,K1(n-1,2)) + scipy.sparse.kron(K1(n,3),SI__)
 Lx = SI_ + (viscosity*dt)*Lxx
+(r,c) = (n-1, n)
+for i in range(r):
+    for j in range(c):
+        s = i*c + j
+        Lx[s,s] = 4
+        if not boundary_up(i,j):
+            Lx[s,s] = 5
+            Lx[s,s-c] = -1
+        if not boundary_down(i,j):
+            Lx[s,s] = 5
+            Lx[s,s+c] = -1
+        if not boundary_right(i,j):
+            Lx[s,s+1] = -1
+        if not boundary_left(i,j):
+            Lx[s,s-1] = -1
 xsolver = scipy.sparse.linalg.splu(Lx)
 
 Lyy = scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
 Ly = SI_ + (viscosity*dt)*Lyy
+(r,c) = (n,n-1)
+for i in range(r):
+    for j in range(c):
+        c = n - 1
+        s = i*c + j
+        Ly[s,s] = 4
+        if not boundary_up(i,j):
+            Ly[s,s] = 5
+            Ly[s,s-c] = -1
+        if not boundary_down(i,j):
+            Ly[s,s] = 5
+            Ly[s,s+c] = -1
+        if not boundary_right(i,j):
+            Ly[s,s+1] = -1
+        if not boundary_left(i,j):
+            Ly[s,s-1] = -1
 ysolver = scipy.sparse.linalg.splu(Ly)
 
 # ------ Grid manipulation functions ------
+
+def reset_solids(u,v):
+    for i in range(n):
+        for j in range(n):
+            if solids[i,j]:
+                u[i-1,j] = 0 
+                u[i,j] = 0 
+                v[i,j-1] = 0 
+                v[i,j] = 0
+    return (u,v) 
 
 def to_centered(u,v):
     """
@@ -122,7 +194,6 @@ def boundary_count(i,j):
     if j==n-1:
         s-=1
     return s
-        
 
 for i in range(n):
     for j in range(n):
