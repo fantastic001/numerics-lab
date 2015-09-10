@@ -42,7 +42,8 @@ def boundary_down(i,j):
     return i == r-1 or solids[i+1,j] 
 
 SI = scipy.sparse.eye(n)
-Lp = scipy.sparse.kron(SI, K1(n, 1)) + scipy.sparse.kron(K1(n, 1), SI)
+#Lp_ = scipy.sparse.kron(SI, K1(n, 1)) + scipy.sparse.kron(K1(n, 1), SI)
+Lp = scipy.sparse.lil_matrix((n**2,n**2))
 c = r = n
 for i in range(r):
     for j in range(c):
@@ -65,49 +66,19 @@ for i in range(r):
 Lp[0,0] = 1.5 * Lp[0,0]
 psolver = scipy.sparse.linalg.splu(Lp)
 
-
 viscosity = 1e-06
 dt = 0.1
 SI_ = scipy.sparse.eye(n*(n-1))
 SI__= scipy.sparse.eye(n-1)
 
 Lxx = scipy.sparse.kron(SI,K1(n-1,2)) + scipy.sparse.kron(K1(n,3),SI__)
-Lx = SI_ + (viscosity*dt)*Lxx
 (r,c) = (n-1, n)
-for i in range(r):
-    for j in range(c):
-        s = i*c + j
-        Lx[s,s] = 4
-        if not boundary_up(i,j):
-            Lx[s,s] = 5
-            Lx[s,s-c] = -1
-        if not boundary_down(i,j):
-            Lx[s,s] = 5
-            Lx[s,s+c] = -1
-        if not boundary_right(i,j):
-            Lx[s,s+1] = -1
-        if not boundary_left(i,j):
-            Lx[s,s-1] = -1
+Lx = SI_ + (viscosity*dt)*Lxx
 xsolver = scipy.sparse.linalg.splu(Lx)
 
 Lyy = scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
-Ly = SI_ + (viscosity*dt)*Lyy
 (r,c) = (n,n-1)
-for i in range(r):
-    for j in range(c):
-        c = n - 1
-        s = i*c + j
-        Ly[s,s] = 4
-        if not boundary_up(i,j):
-            Ly[s,s] = 5
-            Ly[s,s-c] = -1
-        if not boundary_down(i,j):
-            Ly[s,s] = 5
-            Ly[s,s+c] = -1
-        if not boundary_right(i,j):
-            Ly[s,s+1] = -1
-        if not boundary_left(i,j):
-            Ly[s,s-1] = -1
+Ly = SI_ + (viscosity*dt)*Lyy
 ysolver = scipy.sparse.linalg.splu(Ly)
 
 # ------ Grid manipulation functions ------
@@ -195,19 +166,3 @@ def boundary_count(i,j):
         s-=1
     return s
 
-for i in range(n):
-    for j in range(n):
-        print((i,j))
-        s = i*n + j 
-        A[s,s] = -boundary_count(i,j)
-        if i == 0:
-            A[s,s+n] = 1
-        if i == n-1:
-            A[s,s-n] = 1
-        if j == 0:
-            A[s,s+1] = 1
-        if j==n-1:
-            A[s,s-1] = 1
-
-
-print("Computation of A finished")
