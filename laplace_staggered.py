@@ -72,26 +72,14 @@ SI_ = scipy.sparse.eye(n*(n-1))
 SI__= scipy.sparse.eye(n-1)
 
 Lxx = scipy.sparse.kron(SI,K1(n-1,2)) + scipy.sparse.kron(K1(n,3),SI__)
-(r,c) = (n-1, n)
 Lx = SI_ + (viscosity*dt)*Lxx
 xsolver = scipy.sparse.linalg.splu(Lx)
 
 Lyy = scipy.sparse.kron(SI__,K1(n,3)) + scipy.sparse.kron(K1(n-1,2),SI)
-(r,c) = (n,n-1)
 Ly = SI_ + (viscosity*dt)*Lyy
 ysolver = scipy.sparse.linalg.splu(Ly)
 
 # ------ Grid manipulation functions ------
-
-def reset_solids(u,v):
-    for i in range(n):
-        for j in range(n):
-            if solids[i,j]:
-                u[i-1,j] = 0 
-                u[i,j] = 0 
-                v[i,j-1] = 0 
-                v[i,j] = 0
-    return (u,v) 
 
 def to_centered(u,v):
     """
@@ -146,13 +134,65 @@ def apply_pressure(u,v,p):
 
 def projection(u,v):
     ubc, vbc = attach_boundaries(u,v)
-    rhs = compute_divergence(ubc, vbc).reshape(n**2)
-    p = psolver.solve(rhs).reshape([n,n])
+    rhs = compute_divergence(ubc, vbc)[np.logical_not(solids)]
+    rhs = np.array(rhs)
+    count = np.count_nonzero(solids)
+    count = n**2 - count
+    rhs = rhs.reshape(count)
+    p = np.zeros([n,n])
+    res = psolver.solve(rhs)
+    p[np.logical_not(solids)] = res
+    #p = res.reshape([n,n])
     u,v = apply_pressure(u,v,p)
     return (u,v)
 
 x,y = np.mgrid[0:n, 0:n] # suited for transposed grid 
 
+
+# ------ Soid handling ------
+
+def reset_solids(u,v):
+    ubc, vbc = attach_boundaries(u,v)
+    for i in range(n):
+        for j in range(n):
+            if solids[i,j]:
+                ubc[i+1,j] = 0
+                ubc[i,j] = 0 
+                vbc[i,j+1] = 0 
+                vbc[i,j] = 0
+    return (ubc[1:-1, :],vbc[:, 1:-1]) 
+
+def set_solids(s):
+    global solids 
+    global Lp
+    solids = s
+    count = np.count_nonzero(s)
+    Lp = scipy.sparse.lil_matrix((n**2,n**2))
+    c = r = n
+    nonsolid_indices = []
+    for i in range(r):
+        for j in range(c):
+            s = i*c + j
+            if solids[i,j]:
+                continue
+            nonsolid_indices.append(s)
+            Lp[s,s] = 0
+            if not boundary_up(i,j):
+                Lp[s,s] += 1
+                Lp[s,s-c] = -1
+            if not boundary_down(i,j):
+                Lp[s,s] += 1
+                Lp[s,s+c] = -1
+            if not boundary_right(i,j):
+                Lp[s,s] += 1
+                Lp[s,s+1] = -1
+            if not boundary_left(i,j):
+                Lp[s,s] += 1
+                Lp[s,s-1] = -1
+    Lp[0,0] = 1.5 * Lp[0,0]
+    global psolver 
+    Lp = Lp[np.ix_(nonsolid_indices, nonsolid_indices)]
+    psolver = scipy.sparse.linalg.splu(Lp)
 
 def boundary_count(i,j):
     s = 4

@@ -1,5 +1,6 @@
 
 
+
 from laplace_staggered import * 
 
 import matplotlib.pyplot as plt
@@ -9,14 +10,17 @@ scale = 100
 
 l = 100
 
-solids = np.zeros([n,n]).astype(bool)
-set_solids(solids)
-
 def center_stream_velocity(x,y):
     r2 = (x + 1)**2 + (y-0.495*l)**2
     v = np.array([x+1,y-0.495*l]) / np.sqrt(r2)
     F = 20000000/np.sqrt(r2)
     return F*v
+
+def solid_generator(x,y):
+    if x <= 40 and x >= 20 and y > 2 and y < n-2:
+        return True
+    else:
+        return False
 
 # generate field 
 w = np.zeros([n,n, 2])
@@ -24,6 +28,9 @@ for i in range(n):
     for j in range(n):
         f = center_stream_velocity(j,i)
         w[i,j,:] = f
+        solids[i,j] = solid_generator(j,i)
+
+set_solids(solids)
 
 u,v = w[:, :, 0], w[:, :, 1]
 
@@ -41,7 +48,6 @@ print(np.abs(u).max())
 # Converting to staggered 
 u,v = field_transpose(u,v) 
 u,v = to_staggered(u,v)
-
 print("Divergence error")
 ubc, vbc = attach_boundaries(u,v)
 div = compute_divergence(ubc, vbc)
@@ -75,7 +81,14 @@ div = compute_divergence(ubc, vbc)
 print(np.abs(div).max())
 
 # Projection 
+u,v = reset_solids(u,v)
 u,v = projection(u,v)
+
+print(u)
+print(v)
+u,v = reset_solids(u,v)
+print(u)
+print(v)
 
 print("After projection")
 print(np.abs(u).mean())
@@ -85,6 +98,9 @@ print("Divergence error")
 ubc, vbc = attach_boundaries(u,v)
 div = compute_divergence(ubc, vbc)
 print(np.abs(div).max())
+
+print(div)
+np.savetxt("solids_divergence.csv", div, delimiter=",")
 
 # bring 'em back 
 ubc, vbc = attach_boundaries(u,v)
