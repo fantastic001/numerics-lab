@@ -5,10 +5,14 @@ from laplace_staggered import *
 
 import matplotlib.pyplot as plt
 
-m=n
+m=n = 100
 scale = 100
+solids = np.zeros([n,n]).astype(bool)
 
 l = 100
+dt  = 0.1
+viscosity = 1e-07
+xsolver, ysolver = get_diffusion_solvers(viscosity, dt, n)
 
 def center_stream_velocity(x,y):
     r2 = (x + 1)**2 + (y-0.495*l)**2
@@ -30,7 +34,7 @@ for i in range(n):
         w[i,j,:] = f
         solids[i,j] = solid_generator(j,i)
 
-set_solids(solids)
+psolver = set_solids(solids)
 
 u,v = w[:, :, 0], w[:, :, 1]
 
@@ -81,12 +85,12 @@ div = compute_divergence(ubc, vbc)
 print(np.abs(div).max())
 
 # Projection 
-u,v = reset_solids(u,v)
-u,v = projection(u,v)
+u,v = reset_solids(u,v, solids)
+u,v = projection(u,v, psolver, solids)
 
 print(u)
 print(v)
-u,v = reset_solids(u,v)
+u,v = reset_solids(u,v, solids)
 print(u)
 print(v)
 

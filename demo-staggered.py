@@ -4,14 +4,15 @@ from laplace_staggered import *
 
 import matplotlib.pyplot as plt
 
-m=n
+m=n=100
 scale = 100
-
+dt = 0.1
+viscosity = 1e-07
 l = 100
 
 solids = np.zeros([n,n]).astype(bool)
-set_solids(solids)
-
+psolver = set_solids(solids)
+xsolver, ysolver = get_diffusion_solvers(viscosity, dt, n)
 def center_stream_velocity(x,y):
     r2 = (x + 1)**2 + (y-0.495*l)**2
     v = np.array([x+1,y-0.495*l]) / np.sqrt(r2)
@@ -75,7 +76,7 @@ div = compute_divergence(ubc, vbc)
 print(np.abs(div).max())
 
 # Projection 
-u,v = projection(u,v)
+u,v = projection(u,v, psolver, solids)
 
 print("After projection")
 print(np.abs(u).mean())
